@@ -9,7 +9,6 @@ metadata:
 
 syntax:
   identifier_quote: '`'
-  allows_boolean_literal: true
 
 data_types:
   mappings:
@@ -115,7 +114,7 @@ data_types:
     - source:
         name: "INTEGER UNSIGNED"
       dremio:
-        name: "integer"
+        name: "bigint"
     - source:
         name: "INT"
       dremio:
@@ -124,7 +123,7 @@ data_types:
     - source:
         name: "INT UNSIGNED"
       dremio:
-        name: "integer"
+        name: "bigint"
     - source:
         name: "MEDIUMINT"
       dremio:
@@ -3949,6 +3948,18 @@ expressions:
     - names:
         - "to_date"
       signatures:
+        - return: "date"
+          args:
+            - "date"
+          rewrite: "{0}"
+        - return: "date"
+          args:
+            - "timestamp"
+          rewrite: "CAST({0} AS DATE)"
+        - return: "date"
+          args:
+            - "varchar"
+          rewrite: "CAST({0} AS DATE)"
         - return: "timestamp"
           args:
             - "varchar"
