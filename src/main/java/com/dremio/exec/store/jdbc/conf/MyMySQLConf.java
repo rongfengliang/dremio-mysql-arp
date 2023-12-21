@@ -22,10 +22,7 @@ import com.google.common.collect.ImmutableSet;
 import io.protostuff.Tag;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.sql.ConnectionPoolDataSource;
 import javax.validation.constraints.Max;
@@ -45,8 +42,9 @@ import org.slf4j.LoggerFactory;
 public class MyMySQLConf extends AbstractArpConf<MyMySQLConf> {
     private static final Logger logger = LoggerFactory.getLogger(MySQLConf.class);
     private static final String ARP_FILENAME = "arp/implementation/mysql-arp.yaml";
-    private static final MyMySQLDialect MYSQL_ARP_DIALECT = (MyMySQLDialect)AbstractArpConf.loadArpFile("arp/implementation/mysql-arp.yaml", MyMySQLDialect::new);
+    private static final MyMySQLDialect MYSQL_ARP_DIALECT = (MyMySQLDialect)AbstractArpConf.loadArpFile(ARP_FILENAME, MyMySQLDialect::new);
     private static final String POOLED_DATASOURCE = "org.mariadb.jdbc.MariaDbDataSource";
+    private static final String MYSQLDRIVER = "com.mysql.jdbc.Driver";
     @NotBlank
     @Tag(1)
     @DisplayMetadata(
@@ -118,7 +116,7 @@ public class MyMySQLConf extends AbstractArpConf<MyMySQLConf> {
 
     @VisibleForTesting
     public JdbcPluginConfig buildPluginConfig(Builder configBuilder, CredentialsService credentialsService, OptionManager optionManager) {
-        return configBuilder.withDialect(this.getDialect()).withDatasourceFactory(this::newDataSource).withShowOnlyConnDatabase(false).withFetchSize(this.fetchSize).withQueryTimeout(this.queryTimeoutSec).build();
+        return configBuilder.withDialect(this.getDialect()).withDatasourceFactory(this::newDataSourcev2).withShowOnlyConnDatabase(false).withFetchSize(this.fetchSize).withQueryTimeout(this.queryTimeoutSec).build();
     }
 
     private CloseableDataSource newDataSource() throws SQLException {
@@ -131,6 +129,30 @@ public class MyMySQLConf extends AbstractArpConf<MyMySQLConf> {
 
         return this.newDataSource(source);
     }
+    @VisibleForTesting
+    CloseableDataSource newDataSourcev2()  {
+        Properties properties = new Properties();
+        properties.put("useJDBCCompliantTimezoneShift", "true");
+        properties.put("sessionVariables", String.format("net_write_timeout=%d", this.netWriteTimeout));
+        return DataSources.newGenericConnectionPoolDataSource(MYSQLDRIVER, this.toJdbcConnectionStringv2(), this.username, this.password, properties, DataSources.CommitMode.FORCE_MANUAL_COMMIT_MODE, this.maxIdleConns, (long)this.idleTimeSec);
+    }
+
+    @VisibleForTesting
+    String toJdbcConnectionStringv2() {
+        String hostname = (String)Preconditions.checkNotNull(this.hostname, "missing hostname");
+        String portAsString = (String)Preconditions.checkNotNull(this.port, "missing port");
+        int port = Integer.parseInt(portAsString);
+        String url = String.format("jdbc:mysql://%s:%d", hostname, port);
+        logger.info("url:{}",url);
+        System.out.println("url"+url);
+        String connectUrl =  null != this.propertyList && !this.propertyList.isEmpty() ? url + (String)this.propertyList.stream().map((p) -> {
+            return p.name + "=" + p.value;
+        }).collect(Collectors.joining("&", "?", "")) : url;
+        System.out.println("connectUrl"+url);
+        return  connectUrl;
+
+    }
+
 
     @VisibleForTesting
     CloseableDataSource newDataSource(ConnectionPoolDataSource source) throws SQLException {
