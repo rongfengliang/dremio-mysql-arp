@@ -3,12 +3,13 @@
 #
 
 metadata:
-  name: MYMySQL
-  apiname: mymysql
+  name: MySQL
+  apiname: mysql
   spec_version: '1'
 
 syntax:
   identifier_quote: '`'
+  supports_schemas: false
 
 data_types:
   mappings:
@@ -199,7 +200,6 @@ data_types:
 relational_algebra:
   aggregation:
     enable: true
-    group_by_ordinal: true
     distinct: true
     count_functions:
       count_star:
@@ -563,6 +563,10 @@ expressions:
         - args:
             - "decimal"
           return: "double"
+          rewrite: "({0} + 0.0)"
+        - args:
+            - "varchar"
+          return: "float"
           rewrite: "({0} + 0.0)"
         - args:
             - "integer"
@@ -3096,15 +3100,14 @@ expressions:
             - "varchar"
           return: "varchar"
     - names:
+        - "length"
         - "char_length"
         - "character_length"
       signatures:
         - args:
             - "varchar"
-          return: "bigint"
-        - args:
-            - "varchar"
           return: "integer"
+          rewrite: "CHAR_LENGTH({0})"
     - names:
         - "lower"
         - "lcase"
@@ -3265,20 +3268,71 @@ expressions:
           return: "varchar"
           rewrite: "CONCAT({0}, {1})"
     - names:
-        - "current_date"
+        - date_add
       signatures:
-        - args: []
-          return: "date"
+        - return: date
+          args:
+            - varchar
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
+        - return: date
+          args:
+            - date
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
+        - return: date
+          args:
+            - varchar
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
+        - return: date
+          args:
+            - date
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
+        - return: timestamp
+          args:
+            - timestamp
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
+        - return: timestamp
+          args:
+            - timestamp
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, {1}, {0})"
     - names:
-        - "current_time"
+        - date_sub
       signatures:
-        - args: []
-          return: "time"
-    - names:
-        - "current_timestamp"
-      signatures:
-        - args: []
-          return: "timestamp"
+        - return: date
+          args:
+            - varchar
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
+        - return: date
+          args:
+            - date
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
+        - return: date
+          args:
+            - varchar
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
+        - return: date
+          args:
+            - date
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
+        - return: timestamp
+          args:
+            - timestamp
+            - integer
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
+        - return: timestamp
+          args:
+            - timestamp
+            - bigint
+          rewrite: "TIMESTAMPADD(DAY, -{1}, {0})"
     - names:
         - timestampadd_quarter
       signatures:
@@ -4071,6 +4125,38 @@ expressions:
           args:
             - "date"
           rewrite: "({0} - INTERVAL YEAR({0}) % 10 YEAR - INTERVAL MONTH({0}) - 1 MONTH - INTERVAL DAY({0}) - 1 DAY - INTERVAL HOUR({0}) HOUR - INTERVAL MINUTE({0}) MINUTE - INTERVAL SECOND({0}) SECOND - INTERVAL MICROSECOND({0}) MICROSECOND)"
+    - names:
+        - "last_day"
+      signatures:
+        - return: "date"
+          args:
+            - "date"
+        - return: "date"
+          args:
+            - "timestamp"
+    - names:
+        - "add_months"
+      signatures:
+        - return: "date"
+          args:
+            - "date"
+            - "integer"
+          rewrite: "DATE_ADD({0}, INTERVAL {1} MONTH)"
+        - return: "timestamp"
+          args:
+            - "timestamp"
+            - "integer"
+          rewrite: "DATE_ADD({0}, INTERVAL {1} MONTH)"
+        - return: "date"
+          args:
+            - "date"
+            - "bigint"
+          rewrite: "DATE_ADD({0}, INTERVAL {1} MONTH)"
+        - return: "timestamp"
+          args:
+            - "timestamp"
+            - "bigint"
+          rewrite: "DATE_ADD({0}, INTERVAL {1} MONTH)"
   variable_length_operators:
     - names:
         - concat

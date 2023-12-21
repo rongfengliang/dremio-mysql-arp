@@ -29,7 +29,8 @@
                 }
               },
               {
-                "propName": "config.database"
+                "propName": "config.database",
+                "tooltip": "Default schema to use"
               }
             ]
           },
